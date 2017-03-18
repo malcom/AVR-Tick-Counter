@@ -25,17 +25,33 @@ extern uint16_t GetTicks(void);
 
 // Additional C++ interface
 
-struct AutoTickCounter {
+namespace Tick {
 
-	AutoTickCounter() {
-		StartTickCounter();
+void StartCounter() {
+	::StartTickCounter();
+}
+
+void StopCounter() {
+	::StopTickCounter();
+}
+
+uint16_t Get() {
+	return ::GetTicks();
+}
+
+struct AutoCounter {
+
+	AutoCounter() {
+		StartCounter();
 	}
 
-	~AutoTickCounter() {
-		StopTickCounter();
+	~AutoCounter() {
+		StopCounter();
 	}
 
 };
+
+} // namespace Tick
 
 #endif
 

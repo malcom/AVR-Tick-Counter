@@ -20,6 +20,9 @@ int main() {
 	LcdInit();
 	LcdGoto(0, 0);
 
+#ifndef __cplusplus
+	// simple C style API
+
 	StartTickCounter();
 
 	////////////////////
@@ -29,6 +32,19 @@ int main() {
 	////////////////////
 
 	StopTickCounter();
+
+#else
+	// simple C++ style API with RAII
+	{
+		Ticks::AutoCounter ticks;
+		////////////////////
+
+		__builtin_avr_delay_cycles(12345);
+
+		////////////////////
+	}
+
+#endif
 
 	char buf[16];
 	sprintf(buf, "cycles: %d", GetTicks());
