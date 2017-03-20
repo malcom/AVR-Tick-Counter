@@ -18,41 +18,44 @@
 int main() {
 
 	LcdInit();
-	LcdGoto(0, 0);
 
-#ifndef __cplusplus
-	// simple C style API
 
-	StartTickCounter();
+	// First measurement by simple API
 
+	Tick::StartCounter();
 	////////////////////
 
-	__builtin_avr_delay_cycles(1000);
+	__builtin_avr_delay_cycles(100);
 
 	////////////////////
+	Tick::StopCounter();
+	uint16_t m1 = Tick::Get();
 
-	StopTickCounter();
 
-#else
-	// simple C++ style API with RAII
+	// Second measurement by RAII
 	{
-		Ticks::AutoCounter ticks;
+		Tick::AutoCounter ticks;
 		////////////////////
 
-		__builtin_avr_delay_cycles(12345);
+		__builtin_avr_delay_cycles(200);
 
 		////////////////////
 	}
+	uint16_t m2 = Tick::Get();
 
-#endif
 
 	char buf[16];
-	sprintf(buf, "cycles: %d", GetTicks());
+
+	LcdGoto(0, 0);
+	sprintf(buf, "ticks1: %d", m1);
 	LcdWriteText(buf);
 
-	while (true) {
+	LcdGoto(0, 1);
+	sprintf(buf, "ticks2: %d", m2);
+	LcdWriteText(buf);
+
+	while (true)
 		;
-	}
 
 	return 0;
 }
