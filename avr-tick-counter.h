@@ -27,29 +27,41 @@ extern uint16_t GetTicks(void);
 
 namespace Tick {
 
+// to be sure that C++ functions will be always inlined even on -O0
+#define force_inline __attribute__((always_inline)) inline
+
+
+force_inline
 void StartCounter() {
 	::StartTickCounter();
 }
 
+force_inline
 void StopCounter() {
 	::StopTickCounter();
 }
 
+force_inline
 uint16_t Get() {
 	return ::GetTicks();
 }
 
 struct AutoCounter {
 
+	force_inline
 	AutoCounter() {
 		StartCounter();
 	}
 
+	force_inline
 	~AutoCounter() {
 		StopCounter();
 	}
 
 };
+
+
+#undef force_inline
 
 } // namespace Tick
 
