@@ -15,7 +15,7 @@ extern "C" {
 
 extern void StartTickCounter(void);
 extern void StopTickCounter(void);
-extern uint16_t GetTicks(void);
+extern ticks_t GetTicks(void);
 
 #ifdef __cplusplus
 } // extern "C"
@@ -42,7 +42,7 @@ void StopCounter() {
 }
 
 force_inline
-uint16_t Get() {
+ticks_t Get() {
 	return ::GetTicks();
 }
 
