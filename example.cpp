@@ -22,6 +22,17 @@ int main() {
 
 	// First measurement by simple API
 
+	Tick::ResetCounter();
+	Tick::StartCounter();
+	////////////////////
+
+	__builtin_avr_delay_cycles(0xffff);
+
+	////////////////////
+	Tick::StopCounter();
+	// pause counter
+	// do sth...
+	// resume counter
 	Tick::StartCounter();
 	////////////////////
 
@@ -34,7 +45,7 @@ int main() {
 
 	// Second measurement by RAII
 	{
-		Tick::AutoCounter ticks;
+		Tick::AutoCounter ticks(true);
 		////////////////////
 
 		__builtin_avr_delay_cycles(200);

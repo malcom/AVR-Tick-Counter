@@ -8,9 +8,26 @@
 
 #include <avr/io.h>
 
+.global ResetTickCounter
 .global StartTickCounter
 .global StopTickCounter
 .global GetTicks
+
+
+; this code uses some GCC special regs...
+rTmp = 0
+rZero = 1
+
+
+.section .bss
+
+; uint16_t for count additions 8 ticks
+.type	AdtTicks, @object
+.size	AdtTicks, 2
+
+AdtTicks:
+	.zero	2
+
 
 #ifdef AVR_TICK_COUNTER_USE_32BIT
 
@@ -27,46 +44,78 @@ OvfTicks:
 
 .global TIMER1_OVF_vect
 TIMER1_OVF_vect:
-	push r24				; 2 cycles
-	push r25				; 2
+						; 4 cycles int react
+						; 3 jmp from int vector
+	nop					; 1
+	nop					; 1
 
-	lds r24, OvfTicks		; 2
-	lds r25, OvfTicks+1		; 2
+	push r0				; 2
+	push r16			; 2
 
-	push r16				; 2
-	lds r16, SREG			; 2
-	adiw r24, 1				; 2
-	sts SREG, r16			; 2
-	pop r16					; 2
+	; stop timer
+	ldi r16, 0			; 1
+	sts TCCR1B, r16		; 2
 
-	sts OvfTicks+1, r25		; 2
-	sts OvfTicks, r24		; 2
+	push r24
+	push r25
+	lds r0, SREG
 
-	pop r25					; 2
-	pop r24					; 2
+	lds r24, OvfTicks
+	lds r25, OvfTicks+1
+	adiw r24, 1
+	sts OvfTicks+1, r25
+	sts OvfTicks, r24
 
-	reti					; 4
+	lds r24, AdtTicks
+	lds r25, AdtTicks+1
+	adiw r24, 3
+	sts AdtTicks+1, r25
+	sts AdtTicks, r24
 
-; 30 cycles + 4 int react + 3 jmp from int vector - 1 unknown jitter (todo: investigate)
-#define TimerOvfTicksAdds 36
+	sts SREG, r0
+	pop r25
+	pop r24
+
+	; start timer
+	ldi r16, 1<<CS10	; clk source
+	sts TCCR1B, r16
+
+	pop r16				; 2 cycles
+	pop r0				; 2
+
+	nop					;-1 unknown jitter (todo: investigate)
+	reti				; 4
 
 #endif // AVR_TICK_COUNTER_USE_32BIT
 
 .section .text
 
-StartTickCounter:
-	push r16
-	clr r16
+ResetTickCounter:
 
-	; clear counter
-	sts TCNT1H, r16
-	sts TCNT1L, r16
+	sts TCNT1H, rZero
+	sts TCNT1L, rZero
 
 #ifdef AVR_TICK_COUNTER_USE_32BIT
-	; clear overflow counter
-	sts OvfTicks, r16
-	sts OvfTicks+1, r16
+	sts OvfTicks, rZero
+	sts OvfTicks+1, rZero
+#endif // AVR_TICK_COUNTER_USE_32BIT
 
+	sts AdtTicks, rZero
+	sts AdtTicks+1, rZero
+
+	ret
+
+
+StartTickCounter:
+	push r16
+
+	lds r24, AdtTicks
+	lds r25, AdtTicks+1
+	adiw r24, 1
+	sts AdtTicks+1, r25
+	sts AdtTicks, r24
+
+#ifdef AVR_TICK_COUNTER_USE_32BIT
 	; timer interrupt
 	ldi r16, 1<<TOIE0	; timer overflow
 	sts TIMSK1, r16
@@ -79,27 +128,40 @@ StartTickCounter:
 	sts TCCR1B, r16
 
 	pop r16				; 2 cycles
+	nop					; 1
+	nop					; 1
 	ret					; 4
-
-; 6 from StartTickCounter
-#define StartTickCounterAdds 6
 
 
 StopTickCounter:
-	push r16			; 2 cycles
-	clr r16				; 1
+						; 4 call StopTickCounter
+	nop					; 1
+	nop					; 1
 
 	; stop timer
-	sts TCCR1B, r16		; 2
+	sts TCCR1B, rZero	; 2
 
-	pop r16
+	lds r24, AdtTicks
+	lds r25, AdtTicks+1
+	adiw r24, 1
+	sts AdtTicks+1, r25
+	sts AdtTicks, r24
+
 	ret
-
-; 5 from StopTickCounter + 4 call to StopTickCounter
-#define StopTickCounterAdds 9
 
 
 GetTicks:
+
+	; calc additional ticks
+	; AdtTicks * 8 == AdtTicks << 3
+	lds r26, AdtTicks
+	lds r27, AdtTicks+1
+	ldi r22, 3
+	loop:
+	lsl r26
+	rol r27
+	dec r22
+	brne loop
 
 #ifdef AVR_TICK_COUNTER_USE_32BIT
 
@@ -108,23 +170,7 @@ GetTicks:
 	lds r24, OvfTicks
 	lds r25, OvfTicks+1
 
-	; count timer interruption additional cycles
-	; multiply OvfTicks (16b) by TimerOvfTicksAdds (8b)
-	push r16
-	ldi r16, TimerOvfTicksAdds
-	mul r24, r16
-	movw r26, r0	; r26=r0, r27=r1
-	mul r25, r16
-	add r27, r0
-	pop r16
-
-	; add start/stop additional cycles
-	adiw r26, StartTickCounterAdds + StopTickCounterAdds
-
-	clr r0	; for gcc happy
-	clr r1	; for gcc happy
-
-	; subtract all additional ticks
+	; subtract additional ticks
 	sub r22, r26
 	sbc r23, r27
 	sbci r24, 0
@@ -136,7 +182,8 @@ GetTicks:
 	lds r25, TCNT1H
 
 	; subtract additional ticks
-	sbiw r24, StartTickCounterAdds + StopTickCounterAdds
+	sub r24, r26
+	sbc r25, r27
 
 #endif // !AVR_TICK_COUNTER_USE_32BIT
 

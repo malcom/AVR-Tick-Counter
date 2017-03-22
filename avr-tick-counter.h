@@ -9,10 +9,19 @@
 #ifndef AVR_TICK_COUNTER_H
 #define AVR_TICK_COUNTER_H
 
+
+#ifdef AVR_TICK_COUNTER_USE_32BIT
+	typedef uint32_t ticks_t;
+#else
+	typedef uint16_t ticks_t;
+#endif
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+extern void ResetTickCounter(void);
 extern void StartTickCounter(void);
 extern void StopTickCounter(void);
 extern ticks_t GetTicks(void);
@@ -32,6 +41,11 @@ namespace Tick {
 
 
 force_inline
+void ResetCounter() {
+	::ResetTickCounter();
+}
+
+force_inline
 void StartCounter() {
 	::StartTickCounter();
 }
@@ -49,7 +63,9 @@ ticks_t Get() {
 struct AutoCounter {
 
 	force_inline
-	AutoCounter() {
+	AutoCounter(bool reset = true) {
+		if (reset)
+			ResetCounter();
 		StartCounter();
 	}
 

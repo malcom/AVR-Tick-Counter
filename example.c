@@ -24,7 +24,17 @@ int main(void) {
 	StartTickCounter();
 	////////////////////
 
-	__builtin_avr_delay_cycles(1000);
+	__builtin_avr_delay_cycles(100);
+
+	////////////////////
+	StopTickCounter();
+	// pause counter
+	// do sth...
+	// resume counter
+	StartTickCounter();
+	////////////////////
+
+	__builtin_avr_delay_cycles(100);
 
 	////////////////////
 	StopTickCounter();
