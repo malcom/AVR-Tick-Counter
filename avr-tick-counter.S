@@ -14,6 +14,19 @@
 .global GetTicks
 
 
+; this code uses 16-bit timer T1, but different devices may have other timer1
+; config register names/addresses, so correct below if required by your device
+; default values for atmega16/32
+
+rTIMSK = TIMSK		; Timer/Counter Interrupt Mask Register
+bTOIE = TOIE1		; Overflow Interrupt Enable Bit
+
+rTCCR = TCCR1B		; Timer/Counter Control Register
+bCS0 = CS10			; CLK Source Bit
+
+rTCNT = TCNT1		; Timer/Counter Value Register
+
+
 ; this code uses some GCC special regs...
 rTmp = 0
 rZero = 1
@@ -54,7 +67,7 @@ TIMER1_OVF_vect:
 
 	; stop timer
 	ldi r16, 0			; 1
-	sts TCCR1B, r16		; 2
+	sts rTCCR, r16		; 2
 
 	push r24
 	push r25
@@ -77,8 +90,8 @@ TIMER1_OVF_vect:
 	pop r24
 
 	; start timer
-	ldi r16, 1<<CS10	; clk source
-	sts TCCR1B, r16
+	ldi r16, 1<<bCS0	; clk source
+	sts rTCCR, r16
 
 	pop r16				; 2 cycles
 	pop r0				; 2
@@ -92,8 +105,8 @@ TIMER1_OVF_vect:
 
 ResetTickCounter:
 
-	sts TCNT1H, rZero
-	sts TCNT1L, rZero
+	sts rTCNT+1, rZero
+	sts rTCNT, rZero
 
 #ifdef AVR_TICK_COUNTER_USE_32BIT
 	sts OvfTicks, rZero
@@ -117,15 +130,15 @@ StartTickCounter:
 
 #ifdef AVR_TICK_COUNTER_USE_32BIT
 	; timer interrupt
-	ldi r16, 1<<TOIE0	; timer overflow
-	sts TIMSK1, r16
+	ldi r16, 1<<bTOIE	; timer overflow
+	sts rTIMSK, r16
 
 	sei
 #endif // AVR_TICK_COUNTER_USE_32BIT
 
 	; start timer
-	ldi r16, 1<<CS10	; clk source
-	sts TCCR1B, r16
+	ldi r16, 1<<bCS0	; clk source
+	sts rTCCR, r16
 
 	pop r16				; 2 cycles
 	nop					; 1
@@ -139,7 +152,7 @@ StopTickCounter:
 	nop					; 1
 
 	; stop timer
-	sts TCCR1B, rZero	; 2
+	sts rTCCR, rZero	; 2
 
 	lds r24, AdtTicks
 	lds r25, AdtTicks+1
@@ -165,8 +178,8 @@ GetTicks:
 
 #ifdef AVR_TICK_COUNTER_USE_32BIT
 
-	lds r22, TCNT1
-	lds r23, TCNT1+1
+	lds r22,rTCNT
+	lds r23, rTCNT+1
 	lds r24, OvfTicks
 	lds r25, OvfTicks+1
 
@@ -178,8 +191,8 @@ GetTicks:
 
 #else // !AVR_TICK_COUNTER_USE_32BIT
 
-	lds r24, TCNT1L
-	lds r25, TCNT1H
+	lds r24, rTCNT
+	lds r25, rTCNT+1
 
 	; subtract additional ticks
 	sub r24, r26
