@@ -1,6 +1,6 @@
 //
-// Measurement of used AVR microcontroller cycles
-// http://blog.malcom.pl/2017/pomiar-wykorzystanych-cykli-mikrokontrolera-avr.html
+// Simple and accurate tick counter on AVR microcontrollers
+// https://github.com/malcom/AVR-Tick-Counter
 //
 // Copyright (C) 2017 Marcin 'Malcom' Malich <me@malcom.pl>
 // Released under the MIT License.
